@@ -1,4 +1,8 @@
 function el(element = 'div', attrs, children) {
+	if (typeof element === 'function') {
+		element = element.call(this);
+	}
+
 	if (typeof element === 'string') {
 		element = document.createElement(element);
 	}
@@ -77,15 +81,21 @@ el.fn = {
 		for (let index = 0, length = children.length; index < length; index++) {
 			let child = children[index];
 
-			let wasFunction = false;
+			let renderChildElShouldRender = true;
+
 			if (typeof child === 'function') {
 				child = child.call(this);
-				wasFunction = true;
+				renderChildElShouldRender = false;
+			}
+
+			if (Array.isArray(child)) {
+				child = el(...child);
+				renderChildElShouldRender = false;
 			}
 
 			if (!(child instanceof HTMLElement)) {
 				child = document.createTextNode(String(child));
-			} else if (renderChildEl && !wasFunction && child.hasOwnProperty('render')) {
+			} else if (renderChildEl && renderChildElShouldRender && child.hasOwnProperty('render')) {
 				child.render();
 			}
 
