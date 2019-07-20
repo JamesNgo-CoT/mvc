@@ -1,144 +1,114 @@
-/** */
-class Eventful {
-    constructor() {
-        this.eventData = [];
-        this.eventListenData = [];
-    }
+const eventfulPropertyDescriptors = {
+	_eventData: {
+		writable: true
+	},
 
-    on(name, handler, once = false, context = this) {
+	_eventListenData: {
+		writable: true
+	},
 
-        // START ASSERT
-        if (typeof window.console === 'object' && console !== null && typeof console.assert === 'function') {
-            console.assert(typeof name === 'string',
-                'Agrument "name" must hold a string type value.');
-            console.assert(typeof handler === 'function',
-                'Agrument "handler" must hold a function type value.');
-            console.assert(typeof once === 'boolean',
-                'Agrument "once" must hold a boolean type value.');
-            console.assert(context instanceof Eventful,
-                'Agrument "context" must hold an "Eventful" class instance.');
-        }
-        // END ASSERT
+	on: {
+		value(name, handler, once = false, owner = this) {
+			if (!Array.isArray(this._eventData)) {
+				this._eventData = [];
+			}
 
-        this.eventData.push({ name, handler, once, context });
+			this._eventData.push({ name, handler, once, owner });
 
-        return this;
-    }
+			return this;
+		}
+	},
 
-    off(name, handler, once, context, cleanupListenTo = true) {
+	off: {
+		value(name, handler, once, owner, manageEventListenTo = true) {
+			if (!Array.isArray(this._eventData)) {
+				return;
+			}
 
-        // START ASSERT
-        if (typeof window.console === 'object' && console !== null && typeof console.assert === 'function') {
-            console.assert(name === undefined || name === null || typeof name === 'string',
-                'Agrument "name" must be omitted, must be null or must hold a string type value.');
-            console.assert(handler === undefined || handler === null || typeof handler === 'function',
-                'Agrument "handler" must be omitted, must be null or must hold a function type value.');
-            console.assert(once === undefined || once === null || typeof once === 'boolean',
-                'Agrument "once" must be omitted, must be null or must hold a boolean type value.');
-            console.assert(context === undefined || context === null || context instanceof Eventful,
-                'Agrument "context" must be omitted, must be null or must hold an "Eventful" class instance.');
-            console.assert(typeof cleanupListenTo === 'boolean',
-                'Agrument "cleanupListenTo" must hold a boolean type value.');
-        }
-        // END ASSERT
+			let index = 0;
+			while (index < this._eventData.length) {
+				const eventData = this._eventData[index];
+				if ((name === undefined || name === null || eventData.name === name)
+					&& (handler === undefined || handler === null || eventData.handler === handler)
+					&& (once === undefined || once === null || eventData.once === once)
+					&& (owner === undefined || owner === null || eventData.owner === owner)) {
 
-        let index = 0;
-        while (index < this.eventData.length) {
-            const eventData = this.eventData[index];
-            if ((name === undefined || name === null || eventData.name === name)
-                && (handler === undefined || handler === null || eventData.handler === handler)
-                && (once === undefined || once === null || eventData.once === once)
-                && (context === undefined || context === null || eventData.context === context)) {
+					this._eventData.splice(index, 1);
 
-                this.eventData.splice(index, 1);
+					if (manageEventListenTo === true && owner.hasOwnProperty('stopListening') && owner !== this) {
+						owner.stopListening(this, eventData.name, eventData.handler, eventData.once);
+					}
 
-                if (cleanupListenTo === true && context instanceof Eventful && context !== this) {
-                    context.stopListening(this, eventData.name, eventData.handler, eventData.once); // INFINIT LOOP
-                }
+					continue;
+				}
 
-                continue;
-            }
+				index++;
+			}
 
-            index++;
-        }
+			return this;
+		}
+	},
 
-        return this;
-    }
+	trigger: {
+		value(name, ...args) {
+			if (!Array.isArray(this._eventData)) {
+				return;
+			}
 
-    trigger(name, ...args) {
+			for (let index = 0, length = this._eventData.length; index < length; index++) {
+				const eventData = this._eventData[index];
+				if (eventData.name === name) {
+					eventData.handler.call(eventData.owner, ...args);
+				}
+			}
 
-        // START ASSERT
-        if (typeof window.console === 'object' && console !== null && typeof console.assert === 'function') {
-            console.assert(typeof name === 'string',
-                'Agrument "name" must hold a string type value.');
-        }
-        // END ASSERT
+			this.off(name, null, true);
 
-        for (let index = 0, length = this.eventData.length; index < length; index++) {
-            const eventData = this.eventData[index];
-            if (eventData.name === name) {
-                eventData.handler.call(eventData.context, ...args);
-            }
-        }
+			return this;
+		}
+	},
 
-        this.off(name, null, true, null);
+	listenTo: {
+		value(other, name, handler, once = false) {
+			if (!Array.isArray(this._eventListenData)) {
+				this._eventListenData = [];
+			}
 
-        return this;
-    }
+			if (other.hasOwnProperty('on')) {
+				this._eventListenData.push({ other, name, handler, once });
+				other.on(name, handler, once, this);
+			}
 
-    listenTo(context, name, handler, once = false) {
+			return this;
+		}
+	},
 
-        // START ASSERT
-        if (typeof window.console === 'object' && console !== null && typeof console.assert === 'function') {
-            console.assert(context instanceof Eventful,
-                'Agrument "context" must hold an "Eventful" class instance.');
-            console.assert(typeof name === 'string',
-                'Agrument "name" must hold a string type value.');
-            console.assert(typeof handler === 'function',
-                'Agrument "handler" must hold a function type value.');
-            console.assert(typeof once === 'boolean',
-                'Agrument "once" must hold a boolean type value.');
-        }
-        // END ASSERT
+	stopListeningTo: {
+		value(other, name, handler, once) {
+			if (!Array.isArray(this._eventListenData)) {
+				return;
+			}
 
-        this.eventListenData.push({ context, name, handler, once });
-        context.on(name, handler, once, this);
+			let index = 0;
+			while (index < this._eventListenData.length) {
+				const eventListData = this._eventListenData[index];
+				if ((other === undefined || other === null || eventListData.other === other)
+					&& (name === undefined || name === null || eventListData.name === name)
+					&& (handler === undefined || handler === null || eventListData.handler === handler)
+					&& (once === undefined || once === null || eventListData.once === once)) {
 
-        return this;
-    }
+					if (eventListData.other.hasOwnProperty('off')) {
+						this._eventListenData.splice(index, 1);
+						eventListData.other.off(eventListData.name, eventListData.handler, eventListData.once, this, false);
+					}
 
-    stopListening(context, name, handler, once) {
+					continue;
+				}
 
-        // START ASSERT
-        if (typeof window.console === 'object' && console !== null && typeof console.assert === 'function') {
-            console.assert(context === undefined || context === null || context instanceof Eventful,
-                'Agrument "context" must be omitted, must be null or must hold an "Eventful" class instance.');
-            console.assert(name === undefined || name === null || typeof name === 'string',
-                'Agrument "name" must be omitted, must be null or must hold a string type value.');
-            console.assert(handler === undefined || handler === null || typeof handler === 'function',
-                'Agrument "handler" must be omitted, must be null or must hold a function type value.');
-            console.assert(once === undefined || once === null || typeof once === 'boolean',
-                'Agrument "once" must be omitted, must be null or must hold a boolean type value.');
-        }
-        // END ASSERT
+				index++;
+			}
 
-        let index = 0;
-        while (index < this.eventListenData.length) {
-            const eventData = this.eventData[index];
-            if ((context === undefined || context === null || eventData.context === context)
-                && (name === undefined || name === null || eventData.name === name)
-                && (handler === undefined || handler === null || eventData.handler === handler)
-                && (once === undefined || once === null || eventData.once === once)) {
-
-                this.eventData.splice(index, 1);
-                eventData.context.off(eventData.name, eventData.handler, eventData.once, this, false);
-
-                continue;
-            }
-
-            index++;
-        }
-
-        return this;
-    }
-}
+			return this;
+		}
+	}
+};
