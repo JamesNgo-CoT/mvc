@@ -6,4 +6,4 @@ const model = createCounterModel();
 
 const view = document.body.appendChild(createCounterView());
 
-const controller = createCounterController(model, view);
+const controller = createCounterController2(model, view);
