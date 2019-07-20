@@ -1,145 +1,86 @@
-/**
- * Manages counter data.
- * @extends Eventful
- */
-class CounterModel extends Eventful {
+const counterModelPropertyDescriptor = {
+	_count: {
+		writable: true
+	},
 
-    /** 
-     * @argument {number} count Initial count value.
-     */
-    constructor(count = 0) {
-        super();
+	count: {
+		get() {
+			return this._count;
+		},
+		set(newValue) {
+			oldValue = this._count;
+			if (newValue !== oldValue) {
+				this._count = newValue;
 
-        this._count = count;
-    }
+				this.trigger('change', 'count', newValue, oldValue);
+				this.trigger('change:count', newValue, oldValue);
 
-    /**
-     * @type {number}
-     */
-    get count() {
-        return this._count;
-    }
-    set count(newValue) {
+				this.callControllers('counterModelDidChange', 'count', newValue, oldValue);
+				this.callControllers('counterModelCountPropertyDidChange', newValue, oldValue);
+			}
+		}
+	},
 
-        // START ASSERT
-        if (typeof window.console === 'object' && console !== null && typeof console.assert === 'function') {
-            console.assert(typeof newValue === 'number',
-                'Agrument "newValue" must hold a number type value.');
-        }
-        // END ASSERT
+	increment: {
+		value() {
+			if (this.count == null) {
+				this.count = 0;
+			}
 
-        const oldValue = this.count;
-        if (newValue !== oldValue) {
-            this._count = newValue;
+			this.count = this.count + 1;
+		}
+	}
+};
 
-            this.trigger('change', 'count', newValue, oldValue);
-            this.trigger('change:count', newValue, oldValue);
-        }
-    }
-
-    /**
-     * @returns {CounterModel}
-     */
-    increment() {
-        this.count = this.count + 1;
-
-        return this;
-    }
+function createCounterModel(obj = {}) {
+	Object.defineProperties(obj, Object.assign(counterModelPropertyDescriptor, eventfulPropertyDescriptors, controlledPropertyDescriptor));
+	return obj;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+const counterViewPropertyDescriptor = {
+	_suffix: {
+		writable: true
+	},
 
-/**
- * Counter user interface.
- * @extends Eventful
- */
-class CounterView extends Eventful {
+	_click: {
+		value() {
+			this.trigger('click');
+			this.callControllers('click');
+		}
+	},
 
-    /** */
-    constructor() {
-        super();
+	setLable: {
+		value(newLabel) {
+			this._suffix = newLabel;
+			this.render();
+		}
+	}
+};
 
-        this._element = document.createElement('button');
-        this._element.textContent = 'Counter -';
+function createCounterView(ele = 'button') {
+	ele = el(ele);
 
-        this._element.addEventListener('click', (event) => {
-            event.preventDefault();
-            this.trigger('click');
-        });
-    }
+	Object.defineProperties(ele, Object.assign(counterViewPropertyDescriptor, eventfulPropertyDescriptors, controlledPropertyDescriptor));
 
-    /**
-     * @type {HTMLElement}
-     * @readonly
-     */
-    get element() {
-        return this._element;
-    }
+	ele._suffix = '0';
 
-    /**
-     * @param {string} label 
-     * @returns {CounterView}
-     */
-    setLabel(label) {
+	ele.attrs({ 'class': 'counter', 'type': 'button' });
 
-        // START ASSERT
-        if (typeof window.console === 'object' && console !== null && typeof console.assert === 'function') {
-            console.assert(typeof label === 'string',
-                'Agrument "newValue" must hold a string type value.');
-        }
-        // END ASSERT
+	ele.childEls(() => [function() { return `BUTTON ${this._suffix}` }]);
 
-        this._element.textContent = `Counter ${label}`;
+	ele.addEventListener('click', ele._click);
 
-        return this;
-    }
+	return ele;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+const counterControllerPropertyDescriptors = {};
 
-/**
- * @extends Eventful
- */
-class CounterController extends Eventful {
+function createCounterController(model = createCounterModel(), view = createCounterView(), obj = {}) {
+	Object.defineProperties(obj, Object.assign(counterControllerPropertyDescriptors, eventfulPropertyDescriptors, controlledPropertyDescriptor));
 
-    /** */
-    constructor() {
-        super();
+	obj.listenTo(model, 'change', () => view.setLable(model.count));
 
-        this._model = new CounterModel();
-        this._view = new CounterView();
+	obj.listenTo(view, 'click', () => model.increment());
 
-        this._view.on('click', () => {
-            this._model.increment();
-        });
-
-        this._view.on('click', () => {
-            this._model.increment();
-        });
-    }
-
-    /**
-     * @type {CounterModel}
-     * @readonly
-     */
-    get model() {
-        return this._model;
-    }
-
-    /**
-     * @type {CounterView}
-     * @readonly
-     */
-    get view() {
-        return this._view;
-    }
-
-    /**
-     * Returns HTML element (view).
-     * @type {HTMLElement}
-     * @readonly
-    */
-    get viewElement() {
-        return this._view.element;
-    }
+	return obj;
 }
