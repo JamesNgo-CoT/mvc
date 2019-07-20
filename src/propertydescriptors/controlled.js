@@ -1,15 +1,15 @@
 const controlledPropertyDescriptor = {
-	controllerData: {
+	_controllerData: {
 		writable: true
 	},
 
 	addController: {
 		value(controller) {
-			if (!Array.isArray(this.controllerData)) {
-				this.controllerData = [];
+			if (!Array.isArray(this._controllerData)) {
+				this._controllerData = [];
 			}
 
-			this.controller.push(controller);
+			this._controllerData.push(controller);
 
 			return this;
 		}
@@ -17,15 +17,15 @@ const controlledPropertyDescriptor = {
 
 	removeController: {
 		value(controller, checkDuplicates = false) {
-			if (!Array.isArray(this.controllerData)) {
+			if (!Array.isArray(this._controllerData)) {
 				return;
 			}
 
 			const index = 0;
-			while (index < this.controllerData.length) {
-				const controllerData = this.controllerData[index];
+			while (index < this._controllerData.length) {
+				const controllerData = this._controllerData[index];
 				if (controller === controllerData) {
-					this.controllerData.splice(index, 1);
+					this._controllerData.splice(index, 1);
 
 					if (checkDuplicates) {
 						continue;
@@ -41,12 +41,12 @@ const controlledPropertyDescriptor = {
 
 	callControllers: {
 		value(method, ...args) {
-			if (!Array.isArray(this.controllerData)) {
+			if (!Array.isArray(this._controllerData)) {
 				return;
 			}
 
-			for (let index = 0, length = this.controllerData.length; index < length; index++) {
-				const controller = this.controllerData[index];
+			for (let index = 0, length = this._controllerData.length; index < length; index++) {
+				const controller = this._controllerData[index];
 				if (typeof controller[method] === 'function') {
 					controller[method].call(controller, this, ...args);
 				}
